@@ -1781,7 +1781,7 @@ void initServer(void) {
         server.sofd = anetUnixServer(server.neterr,server.unixsocket,
             server.unixsocketperm, server.tcp_backlog);
         if (server.sofd == ANET_ERR) {
-            redisLog(REDIS_WARNING, "Opening socket: %s", server.neterr);
+            redisLog(REDIS_WARNING, "Opening Unix socket: %s", server.neterr);
             exit(1);
         }
         anetNonBlock(NULL,server.sofd);
@@ -2742,7 +2742,7 @@ sds genRedisInfoString(char *section) {
         char maxmemory_hmem[64];
         size_t zmalloc_used = zmalloc_used_memory();
         size_t total_system_mem = server.system_memory_size;
-        char *evict_policy = maxmemoryToString();
+        const char *evict_policy = maxmemoryToString();
         long long memory_lua = (long long)lua_gc(server.lua,LUA_GCCOUNT,0)*1024;
 
         /* Peak memory is updated from time to time by serverCron() so it
