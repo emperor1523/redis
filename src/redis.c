@@ -1260,6 +1260,12 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
 void beforeSleep(struct aeEventLoop *eventLoop) {
     REDIS_NOTUSED(eventLoop);
 
+    /* Call the Redis Cluster before sleep function. Note that this function
+     * may change the state of Redis Cluster (frok ok to fail or vice versa),
+     * so it's a good idea to call it before serving the unblocked clients
+     * later in this function. */
+    if (server.cluster_enabled) clusterBeforeSleep();
+
     /* Run a fast expire cycle (the called function will return
      * ASAP if a fast cycle is not needed). */
     if (server.active_expire_enabled && server.masterhost == NULL)
@@ -1291,9 +1297,6 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
 
     /* Write the AOF buffer on disk */
     flushAppendOnlyFile(0);
-
-    /* Call the Redis Cluster before sleep function. */
-    if (server.cluster_enabled) clusterBeforeSleep();
 }
 
 /* =========================== Server initialization ======================== */
@@ -2216,6 +2219,8 @@ int processCommand(redisClient *c) {
                      * but the slot is not "stable" currently as there is
                      * a migration or import in progress. */
                     addReplySds(c,sdsnew("-TRYAGAIN Multiple keys request during rehashing of slot\r\n"));
+                } else if (error_code == REDIS_CLUSTER_REDIR_DOWN) {
+                    addReplySds(c,sdsnew("-CLUSTERDOWN The cluster is down. Hash slot is unbound\r\n"));
                 } else {
                     redisPanic("getNodeByQuery() unknown error.");
                 }
